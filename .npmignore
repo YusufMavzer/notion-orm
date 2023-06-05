@@ -1,0 +1,6 @@
+src/
+test/
+.nvmrc
+tsconfig.json
+.env
+.env*

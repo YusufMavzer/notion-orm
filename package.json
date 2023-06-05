@@ -1,0 +1,56 @@
+{
+  "name": "@yusufmavzer/notion-orm",
+  "version": "0.0.0-alpha.4",
+  "description": "Notion.so ORM",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "type": "commonjs",
+  "scripts": {
+    "prepublish": "npm run build",
+    "clean": "tsc --clean",
+    "build": "tsc --build --clean && tsc --build && cp README.md ./dist/README.md",
+    "test": "jest --watchAll --setupFiles dotenv/config --detectOpenHandles --verbose"
+  },
+  "author": "Yusuf Mavzer",
+  "license": "MIT",
+  "dependencies": {
+    "@notionhq/client": "^2.2.5",
+    "@types/uuid": "^9.0.1",
+    "uuid": "^9.0.0",
+    "dotenv": "^16.1.4"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.2",
+    "@types/node": "^20.2.5",
+    "typescript": "^5.1.3",
+    "ts-node": "^10.9.1",
+    "ts-jest": "^29.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/YusufMavzer/notion-orm.git"
+  },
+  "keywords": [
+    "notion",
+    "orm"
+  ],
+  "bugs": {
+    "url": "https://github.com/YusufMavzer/notion-orm/issues"
+  },
+  "homepage": "https://github.com/YusufMavzer/notion-orm#readme",
+  "jest": {
+    "transform": {
+      "^.+\\.tsx?$": "ts-jest"
+    },
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "json"
+    ],
+    "verbose": true,
+    "setupFiles": [
+      "dotenv/config"
+    ]
+  }
+}
