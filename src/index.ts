@@ -290,7 +290,7 @@ export class CheckboxProperty extends Property<boolean> {
 
 export class DateProperty extends Property<Date> {
   public readonly type: PropertyType = "DateProperty";
-  public constructor(private start: Date, private end?: Date) {
+  public constructor(private start?: Date, private end?: Date) {
     super();
   }
 
@@ -311,7 +311,7 @@ export class DateProperty extends Property<Date> {
     return {
       date:
       {
-        start: this.start.toISOString(),
+        start: this.start?.toISOString() || null,
         end: this.end?.toISOString() || null
       }
 
