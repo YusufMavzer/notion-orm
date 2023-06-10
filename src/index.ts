@@ -3,10 +3,11 @@ import { WorkerThread } from "./worker";
 
 type NumberFormat = "number" | "number_with_commas" | "percent" | "dollar" | "canadian_dollar" | "singapore_dollar" | "euro" | "pound" | "yen" | "ruble" | "rupee" | "won" | "yuan" | "real" | "lira" | "rupiah" | "franc" | "hong_kong_dollar" | "new_zealand_dollar" | "krona" | "norwegian_krone" | "mexican_peso" | "rand" | "new_taiwan_dollar" | "danish_krone" | "zloty" | "baht" | "forint" | "koruna" | "shekel" | "chilean_peso" | "philippine_peso" | "dirham" | "colombian_peso" | "riyal" | "ringgit" | "leu" | "argentine_peso" | "uruguayan_peso" | "peruvian_sol";
 export type CustomEvents = "RegisterNotionPoolManager" | "InsertNotionRecordEvent" | "UpdateNotionRecordEvent" | "ArchiveNotionRecordEvent" | "RestoreArchivedNotionRecordEvent";
-export type PropertyType = "IdProperty" | "TitleProperty" | "RichTextProperty" | "NumberProperty" | "EmailProperty" | "PhoneNumberProperty" | "UrlProperty" | "CheckboxProperty" | "DateProperty";
+export type PropertyType = "IdProperty" | "TitleProperty" | "RichTextProperty" | "NumberProperty" | "EmailProperty" | "PhoneNumberProperty" | "UrlProperty" | "CheckboxProperty" | "DateProperty" | "SelectProperty" | "MultiSelectProperty";
 export type NotionPropertyType = IdProperty | TitleProperty | RichTextProperty;
 export type ExecType = "InsertRecord" | "UpdateRecord" | "ArchiveRecord" | "RestoreArchivedRecord";
-
+export type ColorType = "default" | "brown" | "blue" | "red" | "green" | "yellow" | "orange" | "gray" | "pink" | "purple";
+export type SelectOption = { name: string, color?: ColorType, id?: string }
 export const RegisterNotionPoolManager = (secrets: string[], version: string, root: string) => {
   WorkerThread.registerPool(secrets, version, root);
 }
@@ -352,6 +353,72 @@ export class NumberProperty extends Property<number> {
     return {
       number: {
         format: this.format || "number"
+      }
+    }
+  }
+}
+
+export class SelectProperty extends Property<SelectOption> {
+  public readonly type: PropertyType = "SelectProperty";
+  public constructor(private value: SelectOption) {
+    super();
+  }
+
+  public set(value: SelectOption): this {
+    this.value = value;
+    return this;
+  }
+
+  public get() {
+    if(!this.value.id) {
+      delete this.value.id;
+    }
+    if(!this.value.color) {
+      delete this.value.color;
+    }
+    return {
+      select: this.value
+    };
+  }
+
+  public schema() {
+    return {
+      select: {
+        options: []
+      }
+    }
+  }
+}
+
+export class MultiSelectProperty extends Property<SelectOption[]> {
+  public readonly type: PropertyType = "MultiSelectProperty";
+  public constructor(private value: SelectOption[]) {
+    super();
+  }
+
+  public set(value: SelectOption[]): this {
+    this.value = value;
+    return this;
+  }
+
+  public get() {
+    this.value.forEach(option => {
+      if(!option.id) {
+        delete option.id;
+      }
+      if(!option.color) {
+        delete option.color;
+      }
+    });
+    return {
+      multi_select: this.value
+    };
+  }
+
+  public schema() {
+    return {
+      multi_select: {
+        options: []
       }
     }
   }

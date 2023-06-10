@@ -1,6 +1,6 @@
 import * as N from "../src/";
 import "reflect-metadata";
-import { NotionDatabase, Title, Id } from "../src/decorators";
+// import { NotionDatabase, Title, Id } from "../src/decorators";
 import { customEnv } from "../src/env";
 const options = {
   secrets: customEnv.NOTION_SECRETS!.split(",").map(i => i.trim()),
@@ -21,6 +21,8 @@ class SampleEntity extends N.NotionEntity {
   public checkbox?: N.CheckboxProperty;
   public birthday?: N.DateProperty;
   public age?: N.NumberProperty;
+  public gender?: N.SelectProperty;
+  public tags?: N.MultiSelectProperty;
 }
 
 class SampleContext extends N.BaseNotionContext<SampleEntity>{
@@ -31,7 +33,7 @@ class SampleContext extends N.BaseNotionContext<SampleEntity>{
 
 describe("Insert To Notion", () => {
 
-  it.skip('Insert 1 record to notion database and wait', async () => {
+  it('Insert 1 record to notion database and wait', async () => {
     N.RegisterNotionPoolManager(options.secrets, options.version, options.root);
 
     const record = new SampleEntity();
@@ -43,10 +45,12 @@ describe("Insert To Notion", () => {
     record.checkbox = new N.CheckboxProperty(true);
     record.birthday = new N.DateProperty(new Date(1996, 3, 4), new Date(1998, 3, 4));
     record.age = new N.NumberProperty(10);
+    record.gender = new N.SelectProperty({ name: "Female" });
+    record.tags = new N.MultiSelectProperty([{ name: "Housewife" }, {name: "6 Children"}]);
 
     const ctx = new SampleContext();
-    //const results = await ctx.insert(record);
-    console.log(JSON.stringify(record, null, 2));
+    const results = await ctx.insert(record);
+    // console.log(JSON.stringify(record, null, 2));
     //expect(results.IdProperty).toBeTruthy();
 
   });
@@ -61,6 +65,10 @@ describe("Insert To Notion", () => {
     record.url = new N.UrlProperty("www.google.com");
     record.phone = new N.PhoneNumberProperty("0483399420");
     record.checkbox = new N.CheckboxProperty(true);
+    record.birthday = new N.DateProperty(new Date(1996, 3, 4), new Date(1998, 3, 4));
+    record.age = new N.NumberProperty(11);
+    record.gender = new N.SelectProperty({ name: "Female" });
+    record.tags = new N.MultiSelectProperty([{ name: "Housewife" }, {name: "6 Children"}]);
 
     const ctx = new SampleContext();
     const results = ctx.insert(record);
