@@ -1,11 +1,12 @@
 import { RecordBuilder } from "./util";
 import { WorkerThread } from "./worker";
+import { ListParser } from "./parser/listParser";
+import { NotionManager } from "./pool"
 
 type NumberFormat = "number" | "number_with_commas" | "percent" | "dollar" | "canadian_dollar" | "singapore_dollar" | "euro" | "pound" | "yen" | "ruble" | "rupee" | "won" | "yuan" | "real" | "lira" | "rupiah" | "franc" | "hong_kong_dollar" | "new_zealand_dollar" | "krona" | "norwegian_krone" | "mexican_peso" | "rand" | "new_taiwan_dollar" | "danish_krone" | "zloty" | "baht" | "forint" | "koruna" | "shekel" | "chilean_peso" | "philippine_peso" | "dirham" | "colombian_peso" | "riyal" | "ringgit" | "leu" | "argentine_peso" | "uruguayan_peso" | "peruvian_sol";
-export type CustomEvents = "RegisterNotionPoolManager" | "InsertNotionRecordEvent" | "UpdateNotionRecordEvent" | "ArchiveNotionRecordEvent" | "RestoreArchivedNotionRecordEvent";
-export type PropertyType = "IdProperty" | "TitleProperty" | "RichTextProperty" | "NumberProperty" | "EmailProperty" | "PhoneNumberProperty" | "UrlProperty" | "CheckboxProperty" | "DateProperty" | "SelectProperty" | "MultiSelectProperty";
+export type CustomEvents = "RegisterNotionPoolManager" | "ListNotionRecordEvent" | "InsertNotionRecordEvent" | "UpdateNotionRecordEvent" | "ArchiveNotionRecordEvent" | "RestoreArchivedNotionRecordEvent";
+export type PropertyType = "IdProperty" | "TitleProperty" | "RichTextProperty" | "NumberProperty" | "EmailProperty" | "PhoneNumberProperty" | "UrlProperty" | "CheckboxProperty" | "DateProperty" | "SelectProperty" | "MultiSelectProperty" | "CreationTimeProperty" | "CreatedByProperty";
 export type NotionPropertyType = IdProperty | TitleProperty | RichTextProperty;
-export type ExecType = "InsertRecord" | "UpdateRecord" | "ArchiveRecord" | "RestoreArchivedRecord";
 export type ColorType = "default" | "brown" | "blue" | "red" | "green" | "yellow" | "orange" | "gray" | "pink" | "purple";
 export type SelectOption = { name: string, color?: ColorType, id?: string }
 export const RegisterNotionPoolManager = (secrets: string[], version: string, root: string) => {
@@ -13,6 +14,20 @@ export const RegisterNotionPoolManager = (secrets: string[], version: string, ro
 }
 export abstract class BaseNotionContext<T extends NotionEntity> {
   constructor(private databaseId: string) { }
+
+  public async find(filter?: any, pageSize: number = 10): Promise<Cursor<T>> {
+    const record = new RecordBuilder(this.databaseId);
+    const payload = record.build("List");
+    payload["page_size"] = pageSize;
+    if (filter) {
+      payload["filter"] = filter;
+    }
+    const raw = await WorkerThread.postEventMessage<any>({
+      type: "ListNotionRecordEvent",
+      payload: payload
+    });
+    return new Cursor<T>(payload, raw);
+  }
 
   public insert(entity: T) {
     const record = new RecordBuilder(this.databaseId);
@@ -23,7 +38,6 @@ export abstract class BaseNotionContext<T extends NotionEntity> {
       }
     });
     const payload = record.build("Insert");
-    // console.log(JSON.stringify(payload, null, 2));
     return WorkerThread.postEventMessage<T>({
       type: "InsertNotionRecordEvent",
       payload
@@ -69,7 +83,6 @@ export abstract class BaseNotionContext<T extends NotionEntity> {
       payload: { page_id: id, archived: false }
     });
   }
-
 }
 
 export interface Message {
@@ -86,7 +99,7 @@ export interface EventResponse {
 
 export abstract class BaseEvent {
   abstract canHandle(message: Message): boolean;
-  abstract handle(message: Message): Promise<any>;
+  abstract handle(message: Message, notionManager: NotionManager): Promise<any>;
 }
 
 export abstract class NotionEntity {
@@ -264,7 +277,6 @@ export class UrlProperty extends Property<string> {
     }
   }
 }
-
 export class CheckboxProperty extends Property<boolean> {
   public readonly type: PropertyType = "CheckboxProperty";
   public constructor(private value: boolean = false) {
@@ -288,7 +300,6 @@ export class CheckboxProperty extends Property<boolean> {
     }
   }
 }
-
 export class DateProperty extends Property<Date> {
   public readonly type: PropertyType = "DateProperty";
   public constructor(private start?: Date, private end?: Date) {
@@ -370,10 +381,10 @@ export class SelectProperty extends Property<SelectOption> {
   }
 
   public get() {
-    if(!this.value.id) {
+    if (!this.value.id) {
       delete this.value.id;
     }
-    if(!this.value.color) {
+    if (!this.value.color) {
       delete this.value.color;
     }
     return {
@@ -403,10 +414,10 @@ export class MultiSelectProperty extends Property<SelectOption[]> {
 
   public get() {
     this.value.forEach(option => {
-      if(!option.id) {
+      if (!option.id) {
         delete option.id;
       }
-      if(!option.color) {
+      if (!option.color) {
         delete option.color;
       }
     });
@@ -421,5 +432,82 @@ export class MultiSelectProperty extends Property<SelectOption[]> {
         options: []
       }
     }
+  }
+}
+
+export class CreationTimeProperty extends Property<Date> {
+  public readonly type: PropertyType = "CreationTimeProperty";
+  public constructor(private value?: Date) {
+    super();
+  }
+
+  public set(value: Date): this {
+    this.value = value;
+    return this;
+  }
+
+  public get() {
+    return {
+      created_time: this.value?.toISOString()
+    }
+  }
+
+  public schema() {
+    return {
+      created_time: {}
+    }
+  }
+}
+
+export class CreationByProperty extends Property<{ id: string, object: string }> {
+  public readonly type: PropertyType = "CreatedByProperty";
+  public constructor(private value?: { id: string, object: string }) {
+    super();
+  }
+
+  public set(value: { id: string, object: string }): this {
+    this.value = value;
+    return this;
+  }
+
+  public get() {
+    return {
+      created_by: this.value
+    }
+  }
+
+  public schema() {
+    return {
+      created_time: {}
+    }
+  }
+}
+
+export class Cursor<T extends NotionEntity> {
+  constructor(
+    private payload: any,
+    private data: {
+      results: T[];
+      next_cursor: string;
+      has_more: boolean;
+    }) {
+  }
+
+  public get hasMore(): boolean {
+    return this.data.has_more;
+  }
+
+  public async nextAsync(ctx: BaseNotionContext<T>) {
+    if (this.data && this.data.next_cursor) {
+      this.payload["start_cursor"] = this.data.next_cursor;
+    }
+
+    this.data = (await ctx.find(this.payload.filter, this.payload.page_size)).data;
+  }
+
+  public get results() {
+    const parser = new ListParser();
+    const response = parser.parse(this.data);
+    return response as T[];
   }
 }

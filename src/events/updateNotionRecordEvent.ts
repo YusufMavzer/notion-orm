@@ -1,17 +1,22 @@
+import { Client } from "@notionhq/client";
 import { BaseEvent, Message } from "..";
-import { NotionPoolManager } from "../pool";
+import { NotionManager } from "../pool";
+import { PageParser } from "../parser/pageParser";
 
 export class UpdateNotionRecordEvent implements BaseEvent {
-  
+
   canHandle(message: Message): boolean {
-      return message.type == "UpdateNotionRecordEvent";
+    return message.type == "UpdateNotionRecordEvent" ||
+      message.type == "ArchiveNotionRecordEvent" ||
+      message.type == "RestoreArchivedNotionRecordEvent";
   }
 
-  async handle(message: Message) {
-    if(!NotionPoolManager.isRegistered()) {
-      throw "first register notion pool manager";
-    }
-    return await NotionPoolManager.exec("UpdateRecord", message.payload);
+  async handle(message: Message, notionManager: NotionManager) {
+    const fn = async (client: Client) => {
+      const results = await client.pages.update(message.payload as any);
+      return new PageParser().parse(results);
+    };
+    return await notionManager.execute(fn);
   }
 
 }

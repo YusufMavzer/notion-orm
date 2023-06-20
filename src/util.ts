@@ -46,7 +46,12 @@ export class RecordBuilder {
     return this;
   }
 
-  public build(type: "Insert" | "Update"): any {
+  public build(type: "Insert" | "Update" | "List"): any {
+    if (type == "List") {
+      return {
+        database_id: this.id
+      }
+    }
     if (type == "Insert") {
       return {
         parent: {

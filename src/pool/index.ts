@@ -1,6 +1,4 @@
 import { Client } from "@notionhq/client";
-import { ExecType } from "..";
-import { PageParser } from "../parser/pageParser";
 
 const date: Date = new Date();
 const clients: Client[] = [];
@@ -19,6 +17,7 @@ async function timeout(): Promise<void> {
     await pause(remainingTime);
   }
 }
+export type NotionManager = typeof NotionPoolManager
 
 export const NotionPoolManager = {
   isRegistered: () => {
@@ -36,23 +35,11 @@ export const NotionPoolManager = {
     minTimeoutPerRequestInMs = 1000 / (clients.length * 3); // 3 requests per second according to `Notion Documentation`
     startTime = date.getTime();
   },
-  exec: async (type: ExecType, payload: any) => {
+  execute: async (fn: (client: Client) => Promise<any>) => {
     let results;
     await timeout();
     const client = clients[index];
-    //EXEC CODE
-    if (type == "InsertRecord") {
-      results = await client.pages.create(payload as any);
-      return new PageParser().parse(results);
-    }
-    if (
-      type == "UpdateRecord" ||
-      type == "ArchiveRecord" ||
-      type == "RestoreArchivedRecord") {
-      results = await client.pages.update(payload as any);
-      return new PageParser().parse(results);
-    }
-    //END EXEC
+    results = await fn(client);
     index++;
     if (index > poolSize) {
       index = 0;

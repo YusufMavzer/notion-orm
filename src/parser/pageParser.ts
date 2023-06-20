@@ -2,6 +2,9 @@ import { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { IdProperty, NotionEntity } from "..";
 import { TitlePropertyParser } from "./titlePropertyParser";
 import { RichTextPropertyParser } from "./richTextPropertyParser";
+import { DatePropertyParser } from "./datePropertyParser";
+import { UrlPropertyParser } from "./urlPropertyParser";
+import { NumberPropertyParser } from "./numberPropertyParser";
 
 export class PageParser<T extends NotionEntity> {
   canParse(value: any): boolean {
@@ -29,5 +32,8 @@ export class PageParser<T extends NotionEntity> {
 
 const propertyParsers = [
   new TitlePropertyParser(),
-  new RichTextPropertyParser()
+  new RichTextPropertyParser(),
+  new UrlPropertyParser(),
+  new DatePropertyParser(),
+  new NumberPropertyParser()
 ];
