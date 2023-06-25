@@ -1,20 +1,23 @@
 import { Client } from "@notionhq/client";
-import { BaseEvent, Message } from "..";
-import { NotionManager } from "../pool";
+import { BaseEventHandler, Message } from "@yusufmavzer/extended_worker_threads"
+import { NotionPoolManager } from "../pool";
 import { PageParser } from "../parser/pageParser";
 
-export class InsertNotionRecordEvent implements BaseEvent {
+export class InsertNotionRecordEventHandler implements BaseEventHandler<any, any> {
 
-  canHandle(message: Message): boolean {
+  canHandle(message: Message<any>): boolean {
     return message.type == "InsertNotionRecordEvent";
   }
 
-  async handle(message: Message, notionManager: NotionManager) {
+  async handle(message: Message<any>) {
+    if (!NotionPoolManager.isRegistered()) {
+      throw "first register notion pool manager";
+    }
     const fn = async (client: Client) => {
       const results = await client.pages.create(message.payload as any);
       return new PageParser().parse(results);
     };
-    return await notionManager.execute(fn);
+    return await NotionPoolManager.execute(fn);
   }
 
 }

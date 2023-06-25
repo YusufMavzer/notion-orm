@@ -1,15 +1,18 @@
 import { Client } from "@notionhq/client";
-import { BaseEvent, Message } from "..";
-import { NotionManager } from "../pool";
+import { BaseEventHandler, Message } from "@yusufmavzer/extended_worker_threads"
+import { NotionPoolManager } from "../pool";
 
-export class ListNotionRecordEvent implements BaseEvent {
+export class ListNotionRecordEventHandler implements BaseEventHandler<any, any> {
 
-  canHandle(message: Message): boolean {
+  canHandle(message: Message<any>): boolean {
     return message.type == "ListNotionRecordEvent";
   }
 
-  async handle(message: Message, notionManager: NotionManager) {
+  async handle(message: Message<any>) {
+    if (!NotionPoolManager.isRegistered()) {
+      throw "first register notion pool manager";
+    }
     const fn = async (client: Client) => await client.databases.query(message.payload as any);
-    return await notionManager.execute(fn);
+    return await NotionPoolManager.execute(fn);
   }
 }

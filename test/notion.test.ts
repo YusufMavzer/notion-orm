@@ -1,7 +1,7 @@
+import { WorkerThread } from "@yusufmavzer/extended_worker_threads";
 import * as N from "../src/";
-import "reflect-metadata";
-// import { NotionDatabase, Title, Id } from "../src/decorators";
 import { customEnv } from "../src/env";
+
 const options = {
   secrets: customEnv.NOTION_SECRETS!.split(",").map(i => i.trim()),
   version: customEnv.NOTION_VERSION!,
@@ -34,11 +34,11 @@ class BondsEntity extends N.NotionEntity {
 describe("Insert To Notion", () => {
 
   it('test', async () => {
-    N.RegisterNotionPoolManager(options.secrets, options.version, options.root);
+    WorkerThread.registerHandlers("dist/events/eventHandlers");
 
+    await N.RegisterNotionPoolManager(options.secrets, options.version, options.root);
     const ctx = new BondsContext();
-    const cursor = await ctx.find(undefined, 10);
-    
+    const cursor = await ctx.find(undefined, 1000);
     const res: BondsEntity[] = [];
     while(cursor.hasMore) {
       res.push(...cursor.results);

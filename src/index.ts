@@ -1,16 +1,22 @@
 import { RecordBuilder } from "./util";
-import { WorkerThread } from "./worker";
 import { ListParser } from "./parser/listParser";
-import { NotionManager } from "./pool"
+import { WorkerThread } from '@yusufmavzer/extended_worker_threads';
 
 type NumberFormat = "number" | "number_with_commas" | "percent" | "dollar" | "canadian_dollar" | "singapore_dollar" | "euro" | "pound" | "yen" | "ruble" | "rupee" | "won" | "yuan" | "real" | "lira" | "rupiah" | "franc" | "hong_kong_dollar" | "new_zealand_dollar" | "krona" | "norwegian_krone" | "mexican_peso" | "rand" | "new_taiwan_dollar" | "danish_krone" | "zloty" | "baht" | "forint" | "koruna" | "shekel" | "chilean_peso" | "philippine_peso" | "dirham" | "colombian_peso" | "riyal" | "ringgit" | "leu" | "argentine_peso" | "uruguayan_peso" | "peruvian_sol";
-export type CustomEvents = "RegisterNotionPoolManager" | "ListNotionRecordEvent" | "InsertNotionRecordEvent" | "UpdateNotionRecordEvent" | "ArchiveNotionRecordEvent" | "RestoreArchivedNotionRecordEvent";
+export type CustomEvents = "RegisterNotionPoolManagerEvent" | "ListNotionRecordEvent" | "InsertNotionRecordEvent" | "UpdateNotionRecordEvent" | "ArchiveNotionRecordEvent" | "RestoreArchivedNotionRecordEvent";
 export type PropertyType = "IdProperty" | "TitleProperty" | "RichTextProperty" | "NumberProperty" | "EmailProperty" | "PhoneNumberProperty" | "UrlProperty" | "CheckboxProperty" | "DateProperty" | "SelectProperty" | "MultiSelectProperty" | "CreationTimeProperty" | "CreatedByProperty";
 export type NotionPropertyType = IdProperty | TitleProperty | RichTextProperty;
 export type ColorType = "default" | "brown" | "blue" | "red" | "green" | "yellow" | "orange" | "gray" | "pink" | "purple";
 export type SelectOption = { name: string, color?: ColorType, id?: string }
 export const RegisterNotionPoolManager = (secrets: string[], version: string, root: string) => {
-  WorkerThread.registerPool(secrets, version, root);
+  return WorkerThread.post<{
+    secrets: string[];
+    version: string;
+    root: string;
+  }, any>({
+    type: "RegisterNotionPoolManagerEvent",
+    payload: { secrets, version, root }
+  })
 }
 export abstract class BaseNotionContext<T extends NotionEntity> {
   constructor(private databaseId: string) { }
@@ -22,7 +28,7 @@ export abstract class BaseNotionContext<T extends NotionEntity> {
     if (filter) {
       payload["filter"] = filter;
     }
-    const raw = await WorkerThread.postEventMessage<any>({
+    const raw = await WorkerThread.post<any,any>({
       type: "ListNotionRecordEvent",
       payload: payload
     });
@@ -38,7 +44,7 @@ export abstract class BaseNotionContext<T extends NotionEntity> {
       }
     });
     const payload = record.build("Insert");
-    return WorkerThread.postEventMessage<T>({
+    return WorkerThread.post<any, T>({
       type: "InsertNotionRecordEvent",
       payload
     });
@@ -56,7 +62,7 @@ export abstract class BaseNotionContext<T extends NotionEntity> {
         record.addProperty(key, val);
       }
     });
-    WorkerThread.postEventMessage<T>({
+    WorkerThread.post<any,T>({
       type: "UpdateNotionRecordEvent",
       payload: record.build("Update")
     });
@@ -67,7 +73,7 @@ export abstract class BaseNotionContext<T extends NotionEntity> {
       throw "record id missing";
     }
     const id = entity.IdProperty.get().value;
-    WorkerThread.postEventMessage({
+    WorkerThread.post({
       type: "ArchiveNotionRecordEvent",
       payload: { page_id: id, archived: true }
     });
@@ -78,28 +84,11 @@ export abstract class BaseNotionContext<T extends NotionEntity> {
       throw "record id missing";
     }
     const id = entity.IdProperty.get().value;
-    WorkerThread.postEventMessage({
+    WorkerThread.post({
       type: "RestoreArchivedNotionRecordEvent",
       payload: { page_id: id, archived: false }
     });
   }
-}
-
-export interface Message {
-  id?: string;
-  type: CustomEvents;
-  payload: any;
-}
-
-export interface EventResponse {
-  result: any;
-  success: boolean;
-  reason?: any;
-}
-
-export abstract class BaseEvent {
-  abstract canHandle(message: Message): boolean;
-  abstract handle(message: Message, notionManager: NotionManager): Promise<any>;
 }
 
 export abstract class NotionEntity {
